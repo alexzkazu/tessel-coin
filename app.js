@@ -1,41 +1,55 @@
 var tessel = require('tessel');
 var http = require('http');
-var https = require('https');
 
 var led1 = tessel.led[0].output(1);
 var led2 = tessel.led[1].output(0);
 
-var server = http.createServer(function (req, res) {
-
 	console.log('http get...');
-	https.get("blockchain.info/address/1BvrLsy4k4q9puCuiTagnBE3SuRNC4nLzK?format=json", function(res) {
-	  console.log(res.statusCode);
-	  if (res.statusCode == 200) {
-	    var body = '';
 
-	    res.on('data', function(chunk) {
-	      body += chunk;
-	      console.log(body);
-	    });
+	var resData = '';
+	var parsed;
+	var initialBalance = undefined;
+	var watchBalance = 0;
 
-	    res.on('end', function() {
-	      console.log('got end');
+	// http.get("blockchain.info/address/1BvrLsy4k4q9puCuiTagnBE3SuRNC4nLzK?format=json", function(res) {
+setInterval(function(){
 
-	      setInterval(function() {
-			console.log("I'm blinking! (Press CTRL+ C to stop)");
-			led1.toggle();
-			led2.toggle();
+	http.get("http://tbtc.blockr.io/api/v1/address/info/n3Q34JHETFFy6xPQHXJh1w7tUoewJCyQZ9", function(res) { //testnet
+		  if (res.statusCode == 200) {
 
-			}, 300);
+		    res.on('data', function(data) {
+		      console.log('initial watch: '+ watchBalance + 'initial balance: ' + initialBalance);
+		      // resData += data;
+		      var parsed = JSON.parse(data);
+		      console.log(JSON.stringify(parsed));
+		      watchBalance = parsed["data"]["balance"];
+		      console.log('assigned watch: '+ watchBalance + 'assigned balance: ' + initialBalance);
 
-	    });
-	  } else {
-	    console.log(res.statusCode);
-	  }
-	}).on('error', function(e) {
-	  console.log("Got error: " + e.message);
-	});
-});
+		      //runs only in the beginning
+		      if (typeof initialBalance === "undefined") {
+		      	initialBalance = parsed["data"]["balance"];
+		      	console.log(initialBalance);
+		      }
 
-server.listen(8080);
-console.log('Server is listening');
+		      // if watchBalance is greater than initial
+		      if (watchBalance > initialBalance) {
+		      	console.log('do something cool!!');
+		      	led1.toggle();
+				led2.toggle();
+		      	clearInterval(interval);
+		      }
+
+		    });
+
+		    res.on('end', function() {
+		      console.log('got end');
+		    });
+
+		  } else {
+		    console.log(res.statusCode);
+		  }
+		}).on('error', function(e) {
+		  console.log("Got error: " + e.message);
+		});
+
+}, 20000);
